@@ -1,0 +1,86 @@
+name: Terraform Checks
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+    - 'terraform/**'
+  push:
+    branches:
+      - main
+    paths:
+    - 'terraform/**'
+
+permissions:
+  contents: read
+
+jobs:
+  terraform-fmt:
+    name: 'Terraform fmt'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3.0.2
+
+      - uses: hashicorp/setup-terraform@17d4c9b8043b238f6f35641cdd8433da1e6f3867 # v2.0.0
+        with:
+          # TODO: extract terraform from the tf file when we have pinned
+          terraform_version: 1.1.6
+
+      - name: Terraform fmt
+        id: fmt
+        run: terraform fmt -check -recursive .
+
+  terraform-validate:
+    name: 'Terraform validate'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./terraform/gcp/modules/sigstore
+
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3.0.2
+
+      - uses: hashicorp/setup-terraform@17d4c9b8043b238f6f35641cdd8433da1e6f3867 # v2.0.0
+        with:
+          # TODO: extract terraform from the tf file when we have pinned
+          terraform_version: 1.1.6
+
+      - name: Terraform init
+        id: init
+        run: terraform init
+
+      - name: Terraform validate
+        id: validate
+        run: terraform validate
+
+
+  terraform-tfsec:
+    name: 'Terraform tfsec'
+    runs-on: ubuntu-latest
+    permissions:
+      # required for all workflows
+      security-events: write
+
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
+
+    steps:
+      - name: 'Checkout'
+        uses: actions/checkout@2541b1294d2704b0964813337f33b291d3f8596b # v3.0.2
+
+      - name: tfsec
+        uses: tfsec/tfsec-sarif-action@5d34a982aa8927c5dd8566d25ef248d526aac1f4 # v0.1.0
+        with:
+          sarif_file: tfsec.sarif
+          working_directory: '.'
+          tfsec_args: --force-all-dirs --verbose
+
+      - name: Upload SARIF file
+        uses: github/codeql-action/upload-sarif@2ca79b6fa8d3ec278944088b4aa5f46912db5d63 # v2.1.15
+        with:
+          # Path to SARIF file relative to the root of the repository
+          sarif_file: tfsec.sarif
