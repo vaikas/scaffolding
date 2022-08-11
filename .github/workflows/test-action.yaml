@@ -28,14 +28,14 @@ jobs:
         - "v0.4.2" # New version with TUF, but test without TUF
         go-version:
         - 1.18
+        legacy-variables:
+        - "true"
+        - "false"
         leg:
         - test github action
     env:
       KO_DOCKER_REPO: registry.local:5000/knative
       COSIGN_EXPERIMENTAL: "true"
-      # Trust the custom Rekor API endpoint for fetching the Public Key from it.
-      # TODO(vaikas): Remove after #276 lands and use that instead
-      SIGSTORE_TRUST_REKOR_API_PUBLIC_KEY: "true"
 
     steps:
     - name: Checkout the current action
